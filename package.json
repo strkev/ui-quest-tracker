@@ -29,7 +29,7 @@
     "electron-updater": "^6.3.9",
     "lucide-react": "^0.563.0",
     "nes.css": "^2.2.1",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "react-router-dom": "^7.13.0",
     "uuid": "^13.0.0"
   },
