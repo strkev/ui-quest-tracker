@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules
+node_modules
+.npm
+.yarn-integrity
+
+# Electron-Vite Build Output (WICHTIG: Nicht hochladen!)
+dist
+dist-electron
+release
+out
+
+# OS Files (Mac/Windows)
+.DS_Store
+Thumbs.db
+
+# Environment Variables (WICHTIG: API Keys geheim halten)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor Directories
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+coverage
+
+# Optional: Solltest du lokale Datenbank-Dateien haben (z.B. SQLite), ignoriere sie
+*.db
+*.sqlite
+
+# Falls du Zertifikate für das App-Signing hast
+*.p12
+*.pfx
