@@ -54,7 +54,7 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
     );
   }
 
-  let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all hover:-translate-y-1 ";
+  let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all";
   
   if (isLocked) cardClasses += " opacity-60 grayscale bg-slate-900";
   else if (isActive) cardClasses += " border-accent/50"; 

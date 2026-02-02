@@ -3,7 +3,6 @@
 
 /* --- THEME VARIABLES & CONFIG --- */
 @theme {
-  /* Wir definieren eine eigene Farbe 'accent', die auf einer CSS-Variable basiert */
   --color-accent: var(--theme-primary);
   --color-accent-hover: var(--theme-primary-hover);
 }
@@ -12,68 +11,133 @@
   /* DEFAULT THEME (Blau) */
   --theme-primary: #3b82f6; /* blue-500 */
   --theme-primary-hover: #2563eb; /* blue-600 */
-  --theme-shadow-color: rgba(59, 130, 246, 0.4); /* blue shadow */
+  --theme-shadow-color: rgba(59, 130, 246, 0.4);
   
-  /* High-Bit Pixel Shadows Defaults */
   --pixel-shadow: 4px 4px 0px 0px var(--theme-shadow-color);
   --pixel-shadow-hover: 2px 2px 0px 0px var(--theme-shadow-color);
 }
 
-/* --- THEME DEFINITIONS (Nur Akzente!) --- */
-
-/* 1. FOREST THEME (Grün) */
+/* --- THEME DEFINITIONS --- */
 body.theme-forest {
-  --theme-primary: #22c55e; /* green-500 */
-  --theme-primary-hover: #16a34a; /* green-600 */
+  --theme-primary: #22c55e;
+  --theme-primary-hover: #16a34a;
   --theme-shadow-color: rgba(34, 197, 94, 0.4);
 }
 
-/* 2. CYBERPUNK THEME (Pink/Magenta) */
 body.theme-cyber {
-  --theme-primary: #ec4899; /* pink-500 */
-  --theme-primary-hover: #db2777; /* pink-600 */
+  --theme-primary: #ec4899;
+  --theme-primary-hover: #db2777;
   --theme-shadow-color: rgba(236, 72, 153, 0.4);
 }
 
-/* 3. ROYAL GOLD (Gold/Amber) */
 body.theme-gold {
-  --theme-primary: #f59e0b; /* amber-500 */
-  --theme-primary-hover: #d97706; /* amber-600 */
+  --theme-primary: #f59e0b;
+  --theme-primary-hover: #d97706;
   --theme-shadow-color: rgba(245, 158, 11, 0.4);
 }
 
-
 /* --- BASE STYLES --- */
 body {
-  background-color: #0f172a; /* Immer Slate-900 Basis */
+  background-color: #0f172a;
   color: #e2e8f0; 
   font-family: 'Inter', system-ui, sans-serif !important;
   -webkit-font-smoothing: antialiased;
-  /* Sehr dezenter Standard-Hintergrund für etwas Textur */
   background-image: radial-gradient(circle at top center, rgba(255,255,255,0.03) 0%, transparent 60%);
   transition: background-color 0.5s ease, color 0.5s ease;
 }
 
-/* NES CSS Overrides für Akzentfarbe */
-.nes-container, .nes-btn, .nes-input, .nes-select select, h1, h2, h3, p, span, label {
-  font-family: 'Inter', system-ui, sans-serif !important;
+/* --- BUTTON STYLING (MODERN ROUNDED) --- */
+
+/* Basis Style für ALLE Buttons überschreiben */
+.nes-btn {
+  /* Mehr Platz und runde Ecken */
+  padding: 0.75rem 1.5rem !important; 
+  border-radius: 0.75rem !important; /* 12px Radius */
+  font-weight: 700 !important;
+  letter-spacing: 0.025em !important;
+  transition: all 0.1s ease-in-out !important;
+  
+  /* Pixel-Rand entfernen, wir nutzen Box-Shadow für 3D Effekt */
+  border: none !important; 
+  margin: 0 !important; /* NES css hat oft margins */
+  
+  /* Flexbox zentrierung falls Icons drin sind */
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
-/* Primäre Buttons nutzen jetzt die variable Akzentfarbe */
+/* Klick-Effekt für alle Buttons (runterdrücken) */
+.nes-btn:active:not(.is-disabled) {
+  transform: translateY(4px) !important;
+  box-shadow: none !important;
+}
+
+/* Primary (Theme Color) */
 .nes-btn.is-primary {
   background-color: var(--theme-primary) !important;
-  border-color: var(--theme-primary-hover) !important;
+  /* Der Schatten erzeugt den 3D Look */
   box-shadow: 0 4px 0 var(--theme-primary-hover) !important;
   color: white !important;
 }
 .nes-btn.is-primary:hover {
    background-color: var(--theme-primary-hover) !important;
+   transform: translateY(1px); /* Leichtes Feedback */
+   box-shadow: 0 3px 0 var(--theme-primary-hover) !important;
+}
+
+/* Success (Green) */
+.nes-btn.is-success {
+  background-color: #10b981 !important; 
+  box-shadow: 0 4px 0 #059669 !important;
+  color: white !important;
+}
+.nes-btn.is-success:hover {
+  background-color: #059669 !important;
+}
+
+/* Error (Red) */
+.nes-btn.is-error {
+  background-color: #ef4444 !important; 
+  box-shadow: 0 4px 0 #dc2626 !important;
+  color: white !important;
+}
+.nes-btn.is-error:hover {
+  background-color: #dc2626 !important;
+}
+
+/* Warning (Amber) */
+.nes-btn.is-warning {
+  background-color: #f59e0b !important; 
+  box-shadow: 0 4px 0 #d97706 !important;
+  color: white !important;
+  color: #451a03 !important; /* Dunkler Text auf Gelb liest sich besser */
+}
+.nes-btn.is-warning:hover {
+   background-color: #d97706 !important;
+}
+
+/* Disabled State */
+.nes-btn.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none !important;
+  transform: translateY(4px) !important; /* "Eingedrückt" weil inaktiv */
+  background-color: #475569 !important;
+  color: #94a3b8 !important;
+}
+
+/* Small Buttons (z.B. Upload Button in Cards) */
+.nes-btn.is-small {
+    padding: 0.4rem 0.8rem !important;
+    font-size: 0.75rem !important;
+    border-radius: 0.5rem !important;
 }
 
 /* Custom Card Utility Class */
 .pixel-card {
   @apply border-2 border-slate-700 bg-slate-800 rounded-xl;
-  /* Schatten nutzt jetzt die variable Schattenfarbe */
   box-shadow: var(--pixel-shadow);
   transition: all 0.2s ease-in-out, border-color 0.3s ease;
 }

@@ -1,19 +1,19 @@
 import React from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db/db';
-import { X, Lock, Check, ShoppingBag, Palette } from 'lucide-react';
+import { X, Lock, ShoppingBag, Palette } from 'lucide-react';
 
 interface ShopModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-// Unsere Items (könnte man später auch in die DB auslagern)
+// FIX: Explizite Klassen statt dynamischer String-Zusammensetzung
 const SHOP_ITEMS = [
-  { id: 'theme-default', name: 'Standard Blue', price: 0, type: 'theme', desc: 'Der klassische Look.', color: 'bg-blue-600' },
-  { id: 'theme-forest', name: 'Forest Green', price: 500, type: 'theme', desc: 'Konzentration durch Natur.', color: 'bg-green-600' },
-  { id: 'theme-cyber', name: 'Cyberpunk Pink', price: 1200, type: 'theme', desc: 'High Tech Akzente.', color: 'bg-pink-600' },
-  { id: 'theme-gold', name: 'Royal Gold', price: 5000, type: 'theme', desc: 'Nur für echte Legenden.', color: 'bg-amber-600' },
+  { id: 'theme-default', name: 'Standard Blue', price: 0, type: 'theme', desc: 'Der klassische Look.', previewClass: 'bg-blue-600/20', iconClass: 'text-blue-500' },
+  { id: 'theme-forest', name: 'Forest Green', price: 500, type: 'theme', desc: 'Konzentration durch Natur.', previewClass: 'bg-green-600/20', iconClass: 'text-green-500' },
+  { id: 'theme-cyber', name: 'Cyberpunk Pink', price: 1200, type: 'theme', desc: 'High Tech Akzente.', previewClass: 'bg-pink-600/20', iconClass: 'text-pink-500' },
+  { id: 'theme-gold', name: 'Royal Gold', price: 5000, type: 'theme', desc: 'Nur für echte Legenden.', previewClass: 'bg-amber-600/20', iconClass: 'text-amber-500' },
 ];
 
 export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose }) => {
@@ -34,7 +34,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose }) => {
             await db.userProfile.update('main_user', {
                 coins: user.coins - item.price,
                 unlockedItems: [...(user.unlockedItems || []), item.id],
-                activeTheme: item.id // Direkt ausrüsten
+                activeTheme: item.id
             });
         }
       } else {
@@ -51,7 +51,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose }) => {
         <div className="bg-slate-900/50 p-6 border-b-2 border-slate-700 flex justify-between items-center shrink-0">
           <div>
             <h2 className="text-2xl font-extrabold text-white flex items-center gap-3">
-               <ShoppingBag className="text-pink-400" /> Item Shop
+               <ShoppingBag className="text-accent" /> Item Shop
             </h2>
             <p className="text-slate-400 text-sm mt-1">Gönn dir Belohnungen für deine Mühen.</p>
           </div>
@@ -68,7 +68,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose }) => {
         </div>
 
         {/* Grid */}
-        <div className="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="p-8 overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 custom-scrollbar">
            {SHOP_ITEMS.map(item => {
              const isUnlocked = user.unlockedItems?.includes(item.id);
              const isEquipped = user.activeTheme === item.id;
@@ -76,10 +76,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({ isOpen, onClose }) => {
 
              return (
                <div key={item.id} className={`pixel-card p-0 overflow-hidden flex flex-col transition-transform hover:-translate-y-1 ${isEquipped ? 'ring-2 ring-accent' : ''}`}>
-                  {/* Preview Area */}
-                  <div className={`h-24 ${item.color}/20 flex items-center justify-center relative`}>
+                  {/* Preview Area - FIX: Nutzung der expliziten Klassen */}
+                  <div className={`h-24 ${item.previewClass} flex items-center justify-center relative`}>
                      {isEquipped && <div className="absolute top-2 right-2 bg-accent text-white text-[10px] font-bold px-2 py-0.5 rounded-full">ACTIVE</div>}
-                     <Palette size={32} className={isEquipped ? 'text-accent' : 'text-slate-500'} />
+                     <Palette size={32} className={isEquipped ? 'text-accent' : item.iconClass} />
                   </div>
                   
                   {/* Content */}
