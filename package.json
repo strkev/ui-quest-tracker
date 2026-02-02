@@ -25,6 +25,7 @@
     "@electron-toolkit/utils": "^4.0.0",
     "date-fns": "^4.1.0",
     "dexie": "^4.3.0",
+    "dexie-react-hooks": "^4.2.0",
     "electron-updater": "^6.3.9",
     "lucide-react": "^0.563.0",
     "nes.css": "^2.2.1",
