@@ -15,8 +15,7 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
   const isActive = module.status === 'active';
   const hasContent = !!module.extractedContent;
 
-// --- 1. COMPACT VIEW (Hall of Fame) ---
-  if (variant === 'compact') {
+if (variant === 'compact') {
     return (
       <div className="pixel-card group relative flex items-center justify-between p-4 bg-slate-800/50 border-slate-700 hover:border-accent/50 hover:bg-slate-800 transition-all duration-300 h-20">
         <div className="flex items-center gap-4 overflow-hidden">
@@ -35,8 +34,9 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
              </h3>
              <div className="flex items-center gap-2 text-xs text-slate-500">
                 <span className="font-mono text-amber-500 font-bold">{module.cp} CP</span>
-                {isCompleted && module.grade && (
-                  // Grade Text in Accent-Farbe
+                
+                {/* FIX: Wir prüfen explizit auf !== undefined, damit auch Note 0 angezeigt wird */}
+                {isCompleted && module.grade !== undefined && module.grade !== null && (
                   <span className="text-accent font-bold animate-pulse">• Grade: {module.grade}</span>
                 )}
              </div>
@@ -55,7 +55,7 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
              onClick={() => onUploadClick(module.id)}
              className={`p-2 rounded border-2 transition-all ${
                hasContent 
-                 ? 'border-accent/30 text-accent hover:bg-accent/10' // Theme Farbe (war vorher Blau)
+                 ? 'border-accent/30 text-accent hover:bg-accent/10' 
                  : 'border-slate-600 text-slate-500 hover:bg-slate-700'
              }`}
              title="PDF Context"
@@ -68,7 +68,6 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
   }
 
   // --- 2. DEFAULT VIEW (Active / Dashboard) ---
-  
   // Dynamische Klassenberechnung für den Theme-Look
   let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all duration-300 ";
   
@@ -95,7 +94,7 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
         </h3>
         
         <div className="flex flex-col items-end gap-2 shrink-0">
-            {/* CP Badge bleibt Amber (Gold), das passt gut als "Währung" */}
+            {/* CP Badge */}
             <span className="px-2 py-1 bg-amber-400 text-amber-950 text-xs font-black rounded border-2 border-amber-600 shadow-sm">
               {module.cp} CP
             </span>
@@ -148,10 +147,14 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
         </button>
       )}
       
-      {/* Footer für Completed State (nur Anzeige) */}
+      {/* Footer für Completed State */}
       {isCompleted && (
-         <div className="w-full text-center mt-3 py-1 border-t border-accent/20">
+         <div className="w-full text-center mt-3 py-1 border-t border-accent/20 flex justify-center gap-2">
             <span className="text-xs font-bold text-accent uppercase tracking-widest opacity-80">Quest Complete</span>
+            {/* Optional: Auch hier Note anzeigen, falls gewünscht */}
+            {module.grade !== undefined && module.grade !== null && (
+                <span className="text-xs font-black text-white bg-accent/20 px-1.5 rounded">{module.grade}</span>
+            )}
          </div>
       )}
     </div>

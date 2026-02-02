@@ -22,6 +22,8 @@ export interface Quest {
   isCompleted: boolean;
   xpReward: number;
   generatedAt: Date;
+  userAnswer?: string;
+  aiFeedback?: string;
 }
 
 // --- UPDATE HIER ---

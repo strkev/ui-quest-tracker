@@ -10,8 +10,10 @@ import {
   History, Flame, ShoppingBag, Search, ArrowDownAZ, ArrowUpAZ, 
   ArrowDown01, ArrowUp01, Filter 
 } from 'lucide-react';
+import { UserMenu } from './UserMenu';
 import { QuestArchiveModal } from './quests/QuestArchiveModal';
 import { ShopModal } from './shop/ShopModal';
+import { QuestItem } from './quests/QuestItem';
 
 type SortOption = 'date' | 'title' | 'grade';
 type SortDirection = 'asc' | 'desc';
@@ -60,9 +62,9 @@ export const Dashboard: React.FC = () => {
       if (sortBy === 'title') {
         comparison = a.title.localeCompare(b.title);
       } else if (sortBy === 'grade') {
-        // Module ohne Note kommen ans Ende
-        const gradeA = a.grade || 99;
-        const gradeB = b.grade || 99;
+        // WICHTIG: '??' nutzen, damit 0 als Zahl erkannt wird (und nicht durch 99 ersetzt wird)
+        const gradeA = a.grade ?? 99;
+        const gradeB = b.grade ?? 99;
         comparison = gradeA - gradeB;
       }
 
@@ -132,9 +134,9 @@ return (
       {/* --- HEADER --- */}
       <header className="mb-10">
         <div className="flex justify-between items-start mb-8">
-          {/* Titel & Stats Container - Jetzt aligned! */}
+          
+          {/* Titel & Stats Container */}
           <div className="flex items-center gap-6">
-            {/* Icon steht links vom Text-Block */}
             <i className="nes-icon trophy is-large"></i>
             
             <div className="flex flex-col">
@@ -142,7 +144,7 @@ return (
                 Skill Tree
               </h1>
               
-              {/* Stats Row - Jetzt exakt unter dem Titel */}
+              {/* Stats Row */}
               <div className="flex items-center gap-4 mt-2 text-slate-400">
                  <span className="badge is-warning text-xs shadow-sm">Level {user?.level || 1}</span>
                  <span className="text-sm font-bold opacity-80">{user?.xp || 0} XP Total</span>
@@ -151,26 +153,35 @@ return (
                     <Flame size={16} fill="currentColor" />
                     <span>{user?.streak || 0} Tage Streak</span>
                  </div>
-
-                 <button 
-                    onClick={() => setIsShopOpen(true)}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 border border-slate-600 hover:border-accent hover:text-accent transition-all text-xs font-bold cursor-pointer ml-2 hover:scale-105"
-                 >
-                    <ShoppingBag size={14} />
-                    <span>Shop</span>
-                 </button>
               </div>
             </div>
           </div>
           
-          <button 
-            onClick={handleGenerateQuests} 
-            disabled={isGenerating}
-            className={`nes-btn ${isGenerating ? 'is-disabled' : 'is-warning'} flex items-center gap-2 shadow-lg self-center`}
-          >
-            {isGenerating ? <Loader2 className="animate-spin" /> : <Zap fill="currentColor" />}
-            {isGenerating ? 'Analysiere...' : 'Start Weekly Quest'}
-          </button>
+          {/* RECHTE SEITE: Actions (Shop + UserMenu + Weekly Button) */}
+          <div className="flex flex-col items-end gap-3">
+             <div className="flex items-center gap-3">
+                {/* Shop Button */}
+                <button 
+                    onClick={() => setIsShopOpen(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800 border border-slate-600 hover:border-pink-500 hover:text-pink-400 hover:shadow-[0_0_15px_rgba(236,72,153,0.3)] transition-all text-xs font-bold cursor-pointer"
+                >
+                    <ShoppingBag size={16} />
+                    <span>Shop</span>
+                </button>
+
+                {/* NEU: User Menu (Export/Import) */}
+                <UserMenu />
+             </div>
+
+             <button 
+                onClick={handleGenerateQuests} 
+                disabled={isGenerating}
+                className={`nes-btn ${isGenerating ? 'is-disabled' : 'is-warning'} flex items-center gap-2 shadow-lg scale-90 origin-right`}
+             >
+                {isGenerating ? <Loader2 className="animate-spin" /> : <Zap fill="currentColor" />}
+                {isGenerating ? 'Analysiere...' : 'Start Weekly Quest'}
+             </button>
+          </div>
         </div>
 
         {/* --- STATS CARDS --- */}
@@ -216,18 +227,11 @@ return (
           {quests && quests.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {quests.map(q => (
-                  <div key={q.id} className="pixel-card bg-slate-800/80 p-5 flex gap-4 items-start border-l-4 border-l-accent hover:bg-slate-800 transition-all hover:-translate-y-1 shadow-md group">
-                    <button onClick={() => completeQuest(q.id, q.xpReward)} className="mt-1 text-slate-500 hover:text-emerald-400 transition-colors hover:scale-110 transform">
-                      <CheckSquare size={24} />
-                    </button>
-                    <div className="flex-grow">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="badge is-primary text-[9px] scale-90 origin-left opacity-90">{q.type}</span>
-                        <span className="text-[10px] text-amber-400 font-bold bg-amber-900/20 px-2 py-0.5 rounded border border-amber-500/30">+{q.xpReward} XP</span>
-                      </div>
-                      <p className="font-bold text-sm leading-relaxed text-slate-300 group-hover:text-white transition-colors">{q.content}</p>
-                    </div>
-                  </div>
+                  <QuestItem 
+                    key={q.id} 
+                    quest={q} 
+                    onComplete={(xp) => completeQuest(q.id, xp)} 
+                  />
                 ))}
             </div>
           ) : (

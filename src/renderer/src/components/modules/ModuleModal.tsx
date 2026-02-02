@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, Module } from '../../db/db';
-import { Trash2, Save, X, Star} from 'lucide-react';
+import { Trash2, Save, X, Star, Pencil, Plus} from 'lucide-react';
 import { GamificationService } from '../../services/GamificationService';
 
 interface ModuleModalProps {
@@ -106,13 +106,19 @@ return (
          }}
       >
         
-        {/* HEADER: px-6 sorgt für bündigen Abschluss mit dem Content */}
+        {/* HEADER */}
         <div className="bg-slate-900/90 px-6 py-5 border-b border-slate-800 flex justify-between items-center backdrop-blur-md">
           <h2 className="text-2xl font-extrabold text-white flex items-center gap-3">
               {isEditMode ? (
-                  <span className="text-amber-400">✎ Edit Module</span>
+                  <div className="flex items-center gap-3 text-amber-400">
+                    <Pencil size={24} />
+                    <span>Edit Module</span>
+                  </div>
               ) : (
-                  <span className="text-accent drop-shadow-md">+ New Quest</span>
+                  <div className="flex items-center gap-3 text-accent drop-shadow-md">
+                    <Plus size={28} strokeWidth={3} />
+                    <span>New Quest</span>
+                  </div>
               )}
           </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-full">
@@ -120,12 +126,11 @@ return (
           </button>
         </div>
         
-        {/* FORM: Ebenfalls p-6 (statt p-8), damit die Inputs exakt unter dem Titel stehen */}
+        {/* FORM */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6 bg-slate-950">
           
           {/* --- TITEL --- */}
           <div>
-            {/* Label ohne ml-1, damit es strikt linksbündig ist */}
             <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Modul Name</label>
             <textarea 
               rows={2}
@@ -144,7 +149,7 @@ return (
               <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Credit Points</label>
               <div className="relative">
                 <input 
-                  type="number" step="0.5" 
+                  type="number" step="0.5" min="0" 
                   className="w-full p-4 pr-12 bg-slate-900/80 border border-slate-700 rounded-xl text-xl font-black text-white focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 transition-all duration-300"
                   value={cp} 
                   onChange={e => setCp(e.target.value)} 
@@ -159,7 +164,7 @@ return (
                <label className="block text-xs font-bold text-accent mb-2 uppercase tracking-wider">Note (Grade)</label>
                <div className="relative">
                  <input 
-                   type="number" step="0.1" min="1.0" max="5.0" 
+                   type="number" step="0.1" min="0" max="18" 
                    className="w-full p-4 pr-12 bg-slate-900/80 border-2 border-accent/50 rounded-xl text-xl font-black text-accent placeholder:text-slate-700 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/30 transition-all duration-300"
                    value={grade} 
                    onChange={e => setGrade(e.target.value)} 

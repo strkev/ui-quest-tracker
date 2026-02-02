@@ -3,6 +3,85 @@ import { db, Quest } from '../db/db';
 const MODEL = 'llama3'; // Dein Modell
 
 export const QuestGenerator = {
+
+async checkAnswer(questContent: string, userAnswer: string): Promise<string> {
+    // WIR FORDERN EXPLIZIT JSON - Das ist sicherer für die Verarbeitung
+    const prompt = `
+      Du bist ein freundlicher Tutor.
+      
+      AUFGABE: "${questContent}"
+      ANTWORT DES STUDENTEN: "${userAnswer}"
+      
+      Bitte bewerte die Antwort.
+      1. Ist sie richtig?
+      2. Was fehlt oder könnte präziser sein?
+      3. Korrigiere Fehler kurz.
+      
+      Fasse dich kurz (maximal 3-4 Sätze). Sprich den Studenten direkt an ("Du hast...").
+      
+      WICHTIG: Antworte NUR als JSON-Objekt in diesem Format:
+      { "feedback": "Dein Feedback Text hier..." }
+    `;
+
+    try {
+      const result = await window.api.generateAI('llama3', prompt); 
+      
+      if (!result.success || !result.data) {
+        return "Konnte keine Bewertung abrufen.";
+      }
+
+      let output = result.data;
+
+      // 1. Falls es ein String ist: Nach JSON suchen und parsen
+      if (typeof output === 'string') {
+        try {
+          // Wir suchen gezielt nach {...} um evtl. Texte davor/danach zu ignorieren
+          const jsonMatch = output.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+             output = JSON.parse(jsonMatch[0]);
+          } else {
+             // Keine geschweiften Klammern? Dann ist es wohl reiner Text.
+             return output; 
+          }
+        } catch (e) {
+          // Parsing fehlgeschlagen? Dann nehmen wir den Roh-Text.
+          return output;
+        }
+      }
+
+      // 2. Objekt analysieren (Hier holen wir das Feedback raus)
+      if (output && typeof output === 'object') {
+        // A: Unser gewünschtes Format
+        if (output.feedback) return output.feedback;
+        
+        // B: Fallback Standard-Felder (falls Llama "response" oder "text" nutzt)
+        if (output.response) return typeof output.response === 'string' ? output.response : JSON.stringify(output.response);
+        if (output.text) return output.text;
+        if (output.content) return output.content;
+
+        // C: Dein Spezialfall ("Key ist der Text")
+        // Wir suchen den längsten Key, falls das LLM das JSON verhauen hat
+        const keys = Object.keys(output);
+        if (keys.length > 0) {
+            const longestKey = keys.reduce((a, b) => a.length > b.length ? a : b);
+            // Wenn der Key wie ein Satz aussieht (> 20 Zeichen), nehmen wir ihn
+            if (longestKey.length > 20) {
+                return longestKey;
+            }
+        }
+        
+        // D: Wenn alles andere fehlschlägt, geben wir das Objekt als String zurück
+        return JSON.stringify(output);
+      }
+
+      return String(output);
+
+    } catch (e) {
+      console.error("AI Check Error:", e);
+      return "Fehler bei der KI-Analyse.";
+    }
+  },
+
   async generate(): Promise<Quest[]> {
     // 1. Kontext sammeln
     const activeModules = await db.modules.where('status').equals('active').toArray();
