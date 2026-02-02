@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, Module } from '../../db/db';
-import { Trash2, Save, X } from 'lucide-react';
+import { Trash2, Save, X, Star} from 'lucide-react';
 import { GamificationService } from '../../services/GamificationService';
 
 interface ModuleModalProps {
@@ -95,26 +95,41 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
     }
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans animate-in fade-in duration-200">
-      <div className="pixel-card bg-slate-800 max-w-lg w-full relative p-0 border-slate-600 shadow-2xl overflow-hidden flex flex-col">
+return (
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans animate-in fade-in duration-200">
+      {/* Container */}
+      <div 
+         className="pixel-card w-full max-w-lg relative p-0 overflow-hidden flex flex-col shadow-2xl transition-colors duration-500 rounded-2xl"
+         style={{ 
+             borderColor: 'var(--theme-primary)', 
+             boxShadow: '0 0 40px -20px var(--theme-shadow-color)' 
+         }}
+      >
         
-        {/* Header */}
-        <div className="bg-slate-900/50 p-6 border-b-2 border-slate-700 flex justify-between items-center">
+        {/* HEADER: px-6 sorgt für bündigen Abschluss mit dem Content */}
+        <div className="bg-slate-900/90 px-6 py-5 border-b border-slate-800 flex justify-between items-center backdrop-blur-md">
           <h2 className="text-2xl font-extrabold text-white flex items-center gap-3">
-              {isEditMode ? <span className="text-amber-400">✎ Edit Module</span> : <span className="text-blue-400">+ New Quest</span>}
+              {isEditMode ? (
+                  <span className="text-amber-400">✎ Edit Module</span>
+              ) : (
+                  <span className="text-accent drop-shadow-md">+ New Quest</span>
+              )}
           </h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-full">
             <X size={24} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6">
+        {/* FORM: Ebenfalls p-6 (statt p-8), damit die Inputs exakt unter dem Titel stehen */}
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-6 bg-slate-950">
+          
+          {/* --- TITEL --- */}
           <div>
+            {/* Label ohne ml-1, damit es strikt linksbündig ist */}
             <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Modul Name</label>
-            <input 
-              type="text" 
-              className="nes-input is-dark w-full text-lg font-bold" 
+            <textarea 
+              rows={2}
+              className="w-full p-4 bg-slate-900/80 border border-slate-700 rounded-xl text-lg font-bold text-white placeholder:text-slate-600 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 transition-all duration-300 resize-none"
               value={title} 
               onChange={e => setTitle(e.target.value)} 
               placeholder="z.B. Software Engineering II"
@@ -124,73 +139,96 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
           </div>
 
           <div className="grid grid-cols-2 gap-6">
+            {/* --- CP INPUT --- */}
             <div>
-              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Credit Points (CP)</label>
+              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Credit Points</label>
               <div className="relative">
                 <input 
                   type="number" step="0.5" 
-                  className="nes-input is-dark w-full pr-10" 
+                  className="w-full p-4 pr-12 bg-slate-900/80 border border-slate-700 rounded-xl text-xl font-black text-white focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/20 transition-all duration-300"
                   value={cp} 
                   onChange={e => setCp(e.target.value)} 
                   required 
                 />
-                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold pointer-events-none">CP</span>
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm font-bold pointer-events-none">CP</span>
               </div>
             </div>
             
-            <div className={`transition-opacity duration-300 ${status === 'completed' ? 'opacity-100' : 'opacity-30 grayscale'}`}>
-               <label className="block text-xs font-bold text-emerald-400 mb-2 uppercase tracking-wider">Note (Grade)</label>
-               <input 
-                 type="number" step="0.1" min="1.0" max="5.0" 
-                 className="nes-input is-success w-full" 
-                 value={grade} 
-                 onChange={e => setGrade(e.target.value)} 
-                 placeholder="-"
-                 disabled={status !== 'completed'}
-               />
+            {/* --- GRADE INPUT --- */}
+            <div className={`transition-all duration-300 ${status === 'completed' ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none'}`}>
+               <label className="block text-xs font-bold text-accent mb-2 uppercase tracking-wider">Note (Grade)</label>
+               <div className="relative">
+                 <input 
+                   type="number" step="0.1" min="1.0" max="5.0" 
+                   className="w-full p-4 pr-12 bg-slate-900/80 border-2 border-accent/50 rounded-xl text-xl font-black text-accent placeholder:text-slate-700 focus:outline-none focus:border-accent focus:ring-4 focus:ring-accent/30 transition-all duration-300"
+                   value={grade} 
+                   onChange={e => setGrade(e.target.value)} 
+                   placeholder="-"
+                   disabled={status !== 'completed'}
+                 />
+                 <Star className="absolute right-4 top-1/2 -translate-y-1/2 text-accent/50 pointer-events-none" size={20} />
+               </div>
             </div>
           </div>
 
+          {/* --- STATUS --- */}
           <div>
-             <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider">Status</label>
-             <div className="flex gap-2">
+             <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Status</label>
+             <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-700">
+                
                 <button
                   type="button"
                   onClick={() => setStatus('active')}
-                  className={`flex-1 py-2 px-3 rounded border-2 text-sm font-bold transition-all ${status === 'active' ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_10px_rgba(37,99,235,0.5)]' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500'}`}
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
+                      status === 'active' 
+                      ? 'bg-accent text-white shadow-lg shadow-accent/25 scale-[1.02]' 
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                  }`}
                 >
                   Running
                 </button>
+                
                 <button
                   type="button"
                   onClick={() => setStatus('locked')}
-                  className={`flex-1 py-2 px-3 rounded border-2 text-sm font-bold transition-all ${status === 'locked' ? 'bg-slate-600 border-slate-400 text-white' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500'}`}
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
+                      status === 'locked' 
+                      ? 'bg-slate-700 text-white scale-[1.02]' 
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                  }`}
                 >
                   Locked
                 </button>
+                
                 <button
                   type="button"
                   onClick={() => setStatus('completed')}
-                  className={`flex-1 py-2 px-3 rounded border-2 text-sm font-bold transition-all ${status === 'completed' ? 'bg-emerald-600 border-emerald-400 text-white shadow-[0_0_10px_rgba(16,185,129,0.5)]' : 'bg-slate-900 border-slate-700 text-slate-500 hover:border-slate-500'}`}
+                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
+                      status === 'completed' 
+                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' 
+                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
+                  }`}
                 >
                   Done
                 </button>
              </div>
           </div>
 
-          <div className="flex justify-between items-center mt-6 pt-6 border-t border-slate-700">
+          {/* --- FOOTER --- */}
+          <div className="flex justify-between items-center mt-2 pt-6 border-t border-slate-800">
             {isEditMode ? (
-              <button type="button" onClick={handleDelete} className="text-red-500 hover:text-red-400 flex items-center gap-2 text-sm font-bold px-2 py-2 rounded hover:bg-red-500/10 transition-colors">
-                <Trash2 size={16} /> Delete
+              <button type="button" onClick={handleDelete} className="text-red-500 hover:text-red-400 flex items-center gap-2 text-xs font-bold px-3 py-2 rounded-lg hover:bg-red-500/10 transition-colors">
+                <Trash2 size={16} /> DELETE
               </button>
             ) : <div></div>}
             
-            <div className="flex gap-3">
-              <button type="button" className="px-4 py-2 rounded text-slate-400 hover:text-white font-bold transition-colors" onClick={onClose}>
+            <div className="flex gap-4">
+              <button type="button" className="px-5 py-3 rounded-xl text-slate-400 hover:text-white text-sm font-bold transition-colors hover:bg-slate-900" onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className={`nes-btn ${status === 'completed' ? 'is-success' : 'is-primary'} flex items-center gap-2`}>
-                <Save size={16} /> {isEditMode ? 'Save Changes' : 'Create Module'}
+              
+              <button type="submit" className="nes-btn is-primary flex items-center gap-2 !rounded-xl !py-3 !px-6 !text-sm shadow-lg shadow-accent/30">
+                <Save size={18} /> {isEditMode ? 'Save Changes' : 'Create Quest'}
               </button>
             </div>
           </div>

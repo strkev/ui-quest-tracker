@@ -15,20 +15,29 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
   const isActive = module.status === 'active';
   const hasContent = !!module.extractedContent;
 
-  // --- COMPACT VIEW (Completed) ---
+// --- 1. COMPACT VIEW (Hall of Fame) ---
   if (variant === 'compact') {
     return (
-      <div className="pixel-card group relative flex items-center justify-between p-4 bg-slate-800/50 border-slate-700 hover:bg-slate-800 transition-colors h-20">
+      <div className="pixel-card group relative flex items-center justify-between p-4 bg-slate-800/50 border-slate-700 hover:border-accent/50 hover:bg-slate-800 transition-all duration-300 h-20">
         <div className="flex items-center gap-4 overflow-hidden">
-          <div className={`shrink-0 w-10 h-10 rounded flex items-center justify-center border-2 ${isCompleted ? 'bg-emerald-900/50 border-emerald-500/50 text-emerald-400' : 'bg-slate-700 border-slate-600 text-slate-500'}`}>
+          {/* Icon Box: Nutzt jetzt accent statt emerald */}
+          <div className={`shrink-0 w-10 h-10 rounded flex items-center justify-center border-2 transition-colors duration-300 ${
+             isCompleted 
+               ? 'bg-accent/20 border-accent/50 text-accent shadow-[0_0_10px_var(--theme-shadow-color)]' 
+               : 'bg-slate-700 border-slate-600 text-slate-500'
+          }`}>
              {isCompleted ? <CheckCircle size={20} /> : <Lock size={20} />}
           </div>
+          
           <div className="min-w-0">
-             <h3 className="text-sm font-bold text-slate-200 truncate pr-4">{module.title}</h3>
+             <h3 className="text-sm font-bold text-slate-200 truncate pr-4 group-hover:text-white transition-colors">
+                {module.title}
+             </h3>
              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <span className="font-mono text-amber-500">{module.cp} CP</span>
+                <span className="font-mono text-amber-500 font-bold">{module.cp} CP</span>
                 {isCompleted && module.grade && (
-                  <span className="text-emerald-400 font-bold">• Grade: {module.grade}</span>
+                  // Grade Text in Accent-Farbe
+                  <span className="text-accent font-bold animate-pulse">• Grade: {module.grade}</span>
                 )}
              </div>
           </div>
@@ -44,7 +53,11 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
            
            <button 
              onClick={() => onUploadClick(module.id)}
-             className={`p-2 rounded border-2 transition-all ${hasContent ? 'border-blue-500/30 text-blue-400 hover:bg-blue-500/20' : 'border-slate-600 text-slate-500 hover:bg-slate-700'}`}
+             className={`p-2 rounded border-2 transition-all ${
+               hasContent 
+                 ? 'border-accent/30 text-accent hover:bg-accent/10' // Theme Farbe (war vorher Blau)
+                 : 'border-slate-600 text-slate-500 hover:bg-slate-700'
+             }`}
              title="PDF Context"
            >
              <FileText size={16} />
@@ -54,28 +67,39 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
     );
   }
 
-  let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all";
+  // --- 2. DEFAULT VIEW (Active / Dashboard) ---
   
-  if (isLocked) cardClasses += " opacity-60 grayscale bg-slate-900";
-  else if (isActive) cardClasses += " border-accent/50"; 
-  else if (isCompleted) cardClasses += " border-emerald-600/50 bg-slate-800/80";
+  // Dynamische Klassenberechnung für den Theme-Look
+  let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all duration-300 ";
+  
+  if (isLocked) {
+    cardClasses += " opacity-60 grayscale bg-slate-900 border-slate-700";
+  } 
+  else if (isActive) {
+    // Active: Leichter Accent-Rahmen
+    cardClasses += " border-accent/50 hover:border-accent hover:shadow-[0_0_15px_var(--theme-shadow-color)] bg-slate-800"; 
+  } 
+  else if (isCompleted) {
+    // Completed: Subtiler Accent-Hintergrund und Leuchten (statt festes Grün)
+    cardClasses += " border-accent/60 bg-accent/5 hover:bg-accent/10 shadow-[inset_0_0_20px_var(--theme-shadow-color)]";
+  }
 
+  // --- 2. DEFAULT VIEW (Active / Dashboard) ---
   return (
     <div className={cardClasses}>
       
-      {/* Header Row (Titel + CP + Edit) */}
+      {/* Header Row */}
       <div className="relative z-10 flex justify-between items-start mb-4">
-        <h3 className="text-lg font-bold leading-tight line-clamp-2 text-white min-h-[3rem] pr-2">
+        <h3 className={`text-lg font-bold leading-tight line-clamp-2 min-h-[3rem] pr-2 transition-colors ${isCompleted ? 'text-accent-hover' : 'text-white'}`}>
           {module.title}
         </h3>
         
         <div className="flex flex-col items-end gap-2 shrink-0">
-            {/* CP Badge */}
+            {/* CP Badge bleibt Amber (Gold), das passt gut als "Währung" */}
             <span className="px-2 py-1 bg-amber-400 text-amber-950 text-xs font-black rounded border-2 border-amber-600 shadow-sm">
-            {module.cp} CP
+              {module.cp} CP
             </span>
             
-            {/* FIX: Edit Button jetzt aligned unter CP oder daneben, sauber positioniert */}
             <button 
                 onClick={(e) => { e.stopPropagation(); onEditClick(module); }}
                 className="p-1.5 text-slate-500 hover:text-white bg-slate-900/50 hover:bg-slate-700 rounded transition-all opacity-0 group-hover:opacity-100"
@@ -90,14 +114,22 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
       <div className="flex-grow flex flex-col items-center justify-center relative z-10 text-slate-300 gap-2">
         {isLocked && <Lock size={48} />}
 
-        {isActive && (
-           <div className={`p-4 rounded-full mb-1 transition-colors ${hasContent ? 'bg-accent/20 text-accent' : 'bg-slate-700 text-slate-500'}`}>
-              <BookOpen size={40} />
+        {(isActive || isCompleted) && (
+           <div className={`p-4 rounded-full mb-1 transition-all duration-500 ${
+             hasContent 
+               ? 'bg-accent/20 text-accent scale-110 shadow-[0_0_15px_var(--theme-shadow-color)]' 
+               : 'bg-slate-700/50 text-slate-500'
+           }`}>
+              {isCompleted ? <CheckCircle size={40} /> : <BookOpen size={40} />}
            </div>
         )}
 
         {!isLocked && (
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${hasContent ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600'}`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors ${
+            hasContent 
+               ? 'bg-accent/10 text-accent border border-accent/30' 
+               : 'bg-slate-700/50 text-slate-500 border border-slate-600'
+          }`}>
             <FileText size={10} />
             {hasContent ? 'AI Ready' : 'No PDF'}
           </div>
@@ -105,13 +137,22 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
       </div>
 
       {/* Footer Button */}
-      {!isLocked && (
+      {!isLocked && !isCompleted && (
         <button 
           onClick={() => onUploadClick(module.id)}
-          className={`nes-btn is-small w-full flex items-center justify-center gap-2 text-xs mt-3 ${hasContent ? (isActive ? 'is-primary' : '') : (isActive ? 'is-warning' : '')}`}
+          className={`nes-btn is-small w-full flex items-center justify-center gap-2 text-xs mt-3 ${
+            hasContent ? 'is-primary' : 'is-warning'
+          }`}
         >
-          <Upload size={12} /> {hasContent ? 'Update' : 'Upload'}
+          <Upload size={12} /> {hasContent ? 'Update PDF' : 'Upload PDF'}
         </button>
+      )}
+      
+      {/* Footer für Completed State (nur Anzeige) */}
+      {isCompleted && (
+         <div className="w-full text-center mt-3 py-1 border-t border-accent/20">
+            <span className="text-xs font-bold text-accent uppercase tracking-widest opacity-80">Quest Complete</span>
+         </div>
       )}
     </div>
   );

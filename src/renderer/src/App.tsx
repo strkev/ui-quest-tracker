@@ -12,8 +12,9 @@ function App(): React.JSX.Element {
     // Standard Theme falls nichts gesetzt
     const theme = user?.activeTheme || 'theme-default';
     
-    // Wir setzen die Klasse auf den Body
-    document.body.className = theme;
+    // WICHTIG: Wir setzen das Attribut auf das HTML Element (root)
+    // Das garantiert, dass CSS Variablen überall korrekt überschrieben werden.
+    document.documentElement.setAttribute('data-theme', theme);
     
   }, [user?.activeTheme]);
 
