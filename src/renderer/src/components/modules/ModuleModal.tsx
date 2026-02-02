@@ -1,47 +1,73 @@
-import React, { useState } from 'react';
-import { db } from '../../db/db';
+import React, { useState, useEffect } from 'react';
+import { db, Module } from '../../db/db';
 
-interface AddModuleModalProps {
+interface ModuleModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialModule?: Module | null; // Wenn gesetzt, sind wir im "Edit Mode"
 }
 
-export const AddModuleModal: React.FC<AddModuleModalProps> = ({ isOpen, onClose }) => {
+export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initialModule }) => {
   const [title, setTitle] = useState('');
-  // State kann nun auch Kommazahlen halten
-  const [cp, setCp] = useState<string>('5'); // Als String speichern für bessere Input-Kontrolle
+  const [cp, setCp] = useState<string>('5');
+  
+  // Prüfen: Sind wir im Edit-Mode?
+  const isEditMode = !!initialModule;
+
+  // Wenn sich das Modal öffnet oder das Module ändert, Felder füllen
+  useEffect(() => {
+    if (isOpen && initialModule) {
+      setTitle(initialModule.title);
+      setCp(initialModule.cp.toString());
+    } else if (isOpen && !initialModule) {
+      // Reset für "Add Mode"
+      setTitle('');
+      setCp('5');
+    }
+  }, [isOpen, initialModule]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await db.modules.add({
-        id: crypto.randomUUID(),
-        title,
-        cp: parseFloat(cp), // Hier wandeln wir den String in eine Zahl (Float) um
-        status: 'active',
-      });
-      setTitle('');
-      setCp('5');
+      if (isEditMode && initialModule) {
+        // --- EDIT LOGIK ---
+        await db.modules.update(initialModule.id, {
+          title,
+          cp: parseFloat(cp)
+        });
+      } else {
+        // --- CREATE LOGIK ---
+        await db.modules.add({
+          id: crypto.randomUUID(),
+          title,
+          cp: parseFloat(cp),
+          status: 'active', // Default
+        });
+      }
       onClose();
     } catch (error) {
-      console.error("Failed to add module:", error);
+      console.error("Failed to save module:", error);
     }
   };
 
-return (
+  return (
     <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans">
-      {/* Wir nutzen auch hier unsere neue .pixel-card Klasse */}
-      <div className="pixel-card bg-slate-800 max-w-md w-full relative p-6 border-slate-600">
+      <div className="pixel-card bg-slate-800 max-w-md w-full relative p-6 border-slate-600 shadow-2xl">
         <h2 className="text-2xl font-extrabold mb-6 text-white flex items-center gap-2">
-            <span className="text-blue-400">+</span> New Module
+            {isEditMode ? (
+              <span className="text-amber-400">✎ Edit Module</span>
+            ) : (
+              <>
+                <span className="text-blue-400">+</span> New Module
+              </>
+            )}
         </h2>
         
         <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div>
             <label htmlFor="title_field" className="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Module Title</label>
-            {/* NES Input is-dark passt hier gut */}
             <input 
               type="text" 
               id="title_field" 
@@ -71,8 +97,8 @@ return (
             <button type="button" className="nes-btn is-error" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="nes-btn is-primary">
-              Create Module
+            <button type="submit" className={`nes-btn ${isEditMode ? 'is-warning' : 'is-primary'}`}>
+              {isEditMode ? 'Save Changes' : 'Create Module'}
             </button>
           </div>
         </form>
