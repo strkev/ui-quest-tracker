@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, Module } from '../../db/db';
 import { Trash2, Save, X } from 'lucide-react';
+import { GamificationService } from '../../services/GamificationService';
 
 interface ModuleModalProps {
   isOpen: boolean;
@@ -35,11 +36,39 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const cpValue = parseFloat(cp);
+      const gradeValue = grade ? parseFloat(grade) : undefined;
+      
+      // LOGIK: XP Management
+      // Bei Erstellung (initialModule ist null) ist status !== undefined immer true
+      const isCompletingNow = status === 'completed' && initialModule?.status !== 'completed';
+      const isUnCompleting = initialModule?.status === 'completed' && status !== 'completed';
+      const alreadyAwarded = initialModule?.xpAwarded || false;
+      
+      let newXpAwardedState = alreadyAwarded;
+
+      // Fall 1: Modul wird abgeschlossen (oder direkt als Done erstellt) -> XP geben
+      if (isCompletingNow && !alreadyAwarded && gradeValue) {
+        const rewardXP = GamificationService.calculateModuleReward(cpValue, gradeValue);
+        const { levelUp } = await GamificationService.addXP(rewardXP);
+        alert(`Glückwunsch! Du hast ${rewardXP} XP erhalten!${levelUp ? '\nLEVEL UP!' : ''}`);
+        newXpAwardedState = true;
+      }
+
+      // Fall 2: Modul wird zurückgesetzt -> XP abziehen
+      if (isUnCompleting && alreadyAwarded && initialModule?.grade) {
+        const xpToDeduct = GamificationService.calculateModuleReward(initialModule.cp, initialModule.grade);
+        await GamificationService.removeXP(xpToDeduct);
+        alert(`Status geändert: ${xpToDeduct} XP wurden wieder abgezogen.`);
+        newXpAwardedState = false;
+      }
+
       const moduleData = {
         title,
-        cp: parseFloat(cp),
-        grade: grade ? parseFloat(grade) : undefined,
-        status
+        cp: cpValue,
+        grade: gradeValue,
+        status,
+        xpAwarded: newXpAwardedState
       };
 
       if (isEditMode && initialModule) {
@@ -48,9 +77,11 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
         await db.modules.add({
           id: crypto.randomUUID(),
           ...moduleData,
-          status: 'active'
+          // WICHTIG: Hier stand vorher status: 'active'. Das haben wir gelöscht.
+          // Jetzt wird moduleData.status genommen (was 'completed' sein kann).
         });
       }
+      
       onClose();
     } catch (error) {
       console.error("Failed to save module:", error);
@@ -98,12 +129,11 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
               <div className="relative">
                 <input 
                   type="number" step="0.5" 
-                  className="nes-input is-dark w-full pr-10" // Extra Padding rechts, damit Text nicht über CP läuft
+                  className="nes-input is-dark w-full pr-10" 
                   value={cp} 
                   onChange={e => setCp(e.target.value)} 
                   required 
                 />
-                {/* FIX: Alignment mit top-1/2 */}
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold pointer-events-none">CP</span>
               </div>
             </div>

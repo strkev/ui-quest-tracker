@@ -1,42 +1,41 @@
 import Dexie, { type EntityTable } from 'dexie';
 
-// --- Types & Interfaces ---
-
 export type ModuleStatus = 'locked' | 'active' | 'completed';
 
 export interface Module {
   id: string;
   title: string;
-  cp: number; // Credit Points
-  grade?: number; // Note (1.0 - 5.0)
+  cp: number; 
+  grade?: number;
   status: ModuleStatus;
-  
-  // PDF & AI Context Fields
-  pdfPath?: string; // Lokaler Pfad zur Datei (für Electron)
-  extractedContent?: string; // Der rohe Text aus der PDF für RAG (Retrieval Augmented Generation)
+  pdfPath?: string;
+  extractedContent?: string;
+  xpAwarded?: boolean; 
 }
 
 export type QuestType = 'review' | 'learning' | 'prep';
 
 export interface Quest {
   id: string;
-  content: string; // Der Aufgabentext
+  content: string;
   type: QuestType;
   isCompleted: boolean;
   xpReward: number;
-  generatedAt: Date; // Wichtig für Weekly-Reset Logik
+  generatedAt: Date;
 }
 
+// --- UPDATE HIER ---
 export interface UserProfile {
-  id: string; // Wir nutzen hier einen festen Key, z.B. "user_main"
+  id: string;
   xp: number;
   level: number;
   coins: number;
   streak: number;
   lastLogin: Date;
+  // Neue Felder für den Shop
+  activeTheme: string; 
+  unlockedItems: string[]; 
 }
-
-// --- Database Configuration ---
 
 const db = new Dexie('UniQuestDB') as Dexie & {
   modules: EntityTable<Module, 'id'>;
@@ -44,15 +43,12 @@ const db = new Dexie('UniQuestDB') as Dexie & {
   userProfile: EntityTable<UserProfile, 'id'>;
 };
 
-// Schema Definition
-// Hinweis: Wir indizieren nur Felder, die wir für WHERE-Clauses benötigen.
 db.version(2).stores({
-  modules: 'id, status', // Status wichtig für: "Gib mir alle Active Module für Kontext"
-  quests: 'id, isCompleted, generatedAt', // Wichtig für: "Zeige offene Quests"
+  modules: 'id, status',
+  quests: 'id, isCompleted, generatedAt',
   userProfile: 'id'
 });
 
-// Optional: Ein Hook, der beim Starten prüft, ob ein User-Profil existiert
 db.on('populate', () => {
   db.userProfile.add({
     id: 'main_user',
@@ -60,7 +56,10 @@ db.on('populate', () => {
     level: 1,
     coins: 0,
     streak: 0,
-    lastLogin: new Date()
+    lastLogin: new Date(),
+    // Defaults setzen
+    activeTheme: 'theme-default',
+    unlockedItems: ['theme-default']
   });
 });
 

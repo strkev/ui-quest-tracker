@@ -54,11 +54,10 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
     );
   }
 
-  // --- DEFAULT VIEW (Active) ---
   let cardClasses = "pixel-card relative h-72 flex flex-col p-5 overflow-hidden group transition-all hover:-translate-y-1 ";
   
   if (isLocked) cardClasses += " opacity-60 grayscale bg-slate-900";
-  else if (isActive) cardClasses += " border-blue-500/50 shadow-[4px_4px_0px_0px_rgba(59,130,246,0.4)] hover:shadow-[2px_2px_0px_0px_rgba(59,130,246,0.6)]";
+  else if (isActive) cardClasses += " border-accent/50"; 
   else if (isCompleted) cardClasses += " border-emerald-600/50 bg-slate-800/80";
 
   return (
@@ -92,13 +91,13 @@ export const ModuleItem: React.FC<ModuleItemProps> = ({ module, variant = 'defau
         {isLocked && <Lock size={48} />}
 
         {isActive && (
-           <div className={`p-4 rounded-full mb-1 transition-colors ${hasContent ? 'bg-blue-500/20 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-slate-700 text-slate-500'}`}>
+           <div className={`p-4 rounded-full mb-1 transition-colors ${hasContent ? 'bg-accent/20 text-accent' : 'bg-slate-700 text-slate-500'}`}>
               <BookOpen size={40} />
            </div>
         )}
 
         {!isLocked && (
-          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${hasContent ? 'bg-blue-900/50 text-blue-300 border border-blue-500/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600'}`}>
+          <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${hasContent ? 'bg-accent/10 text-accent border border-accent/30' : 'bg-slate-700/50 text-slate-500 border border-slate-600'}`}>
             <FileText size={10} />
             {hasContent ? 'AI Ready' : 'No PDF'}
           </div>
