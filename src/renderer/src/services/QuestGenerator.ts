@@ -82,33 +82,28 @@ async checkAnswer(questContent: string, userAnswer: string): Promise<string> {
     }
   },
 
-  async generate(): Promise<Quest[]> {
-    // 1. Kontext sammeln
-    const activeModules = await db.modules.where('status').equals('active').toArray();
-    const completedModules = await db.modules.where('status').equals('completed').toArray();
-    
-    let context = "LERN-KONTEXT:\n";
-    let hasContent = false;
-    
-    // Active Material
-    activeModules.forEach(m => {
-      if(m.extractedContent && m.extractedContent.length > 50) {
-        context += `MODUL (Aktuell): ${m.title}\nAUSZUG: ${m.extractedContent.substring(0, 1500).replace(/\n/g, ' ')}\n\n`;
-        hasContent = true;
-      }
-    });
+async generate(): Promise<Quest[]> {
+    // 1. Alle Module laden, die Text enthalten (unabhängig vom Status 'active'/'completed')
+    const allModules = await db.modules.toArray();
+    const modulesWithContent = allModules.filter(m => m.extractedContent && m.extractedContent.length > 50);
 
-    // Spaced Repetition Material
-    if (completedModules.length > 0) {
-      const randomMod = completedModules[Math.floor(Math.random() * completedModules.length)];
-      if(randomMod.extractedContent && randomMod.extractedContent.length > 50) {
-        context += `MODUL (Wiederholung): ${randomMod.title}\nAUSZUG: ${randomMod.extractedContent.substring(0, 1000)}\n\n`;
-        hasContent = true;
-      }
+    if (modulesWithContent.length === 0) {
+      throw new Error("Keine PDF-Inhalte gefunden! Bitte lade erst Skripte hoch.");
     }
 
-    if (!hasContent) {
-      throw new Error("Keine PDF-Inhalte gefunden! Bitte lade erst Skripte hoch.");
+    let context = "LERN-KONTEXT:\n";
+    
+    // Aktive Module priorisieren
+    const activeWithContent = modulesWithContent.filter(m => m.status === 'active');
+    activeWithContent.forEach(m => {
+      context += `MODUL (Aktuell): ${m.title}\nAUSZUG: ${m.extractedContent?.substring(0, 1500).replace(/\n/g, ' ')}\n\n`;
+    });
+
+    // Falls vorhanden, ein zufälliges abgeschlossenes Modul für Review hinzufügen (Spaced Repetition)
+    const completedWithContent = modulesWithContent.filter(m => m.status === 'completed');
+    if (completedWithContent.length > 0) {
+      const randomMod = completedWithContent[Math.floor(Math.random() * completedWithContent.length)];
+      context += `MODUL (Wiederholung): ${randomMod.title}\nAUSZUG: ${randomMod.extractedContent?.substring(0, 1000)}\n\n`;
     }
 
     // 2. Prompt erstellen
@@ -124,54 +119,34 @@ async checkAnswer(questContent: string, userAnswer: string): Promise<string> {
     `;
 
     console.log("Sende Anfrage an Electron Backend...");
-    
     const result = await window.api.generateAI(MODEL, prompt);
 
     if (!result.success || !result.data) {
       throw new Error(result.error || "Unbekannter KI Fehler (Backend)");
     }
 
-    // --- FIX: Robustes Parsing ---
     let questsRaw: any;
     try {
-        // Schritt A: Rohdaten normalisieren
         let rawJson = result.data;
-        
-        // Falls Ollama das JSON im "response" String verpackt hat (Standard bei stream:false)
         if (rawJson.response && typeof rawJson.response === 'string') {
            rawJson = JSON.parse(rawJson.response);
-        } 
-        // Falls Ollama direkt das Objekt zurückgibt (manchmal bei format:'json')
-        else if (result.data && !result.data.response) {
+        } else if (result.data && !result.data.response) {
            rawJson = result.data;
         }
-
         questsRaw = rawJson;
-
     } catch (e) {
-        console.error("JSON Parse Fehler:", e);
         throw new Error("Die KI hat kein gültiges JSON geliefert.");
     }
 
-    // Schritt B: Array extrahieren (Hier lag der Fehler!)
-    // Wenn die KI { "quests": [...] } statt [...] geschickt hat:
     if (!Array.isArray(questsRaw) && typeof questsRaw === 'object' && questsRaw !== null) {
-        if (Array.isArray(questsRaw.quests)) {
-            questsRaw = questsRaw.quests;
-        } else if (Array.isArray(questsRaw.tasks)) {
-            questsRaw = questsRaw.tasks;
-        } else if (Array.isArray(questsRaw.data)) {
-            questsRaw = questsRaw.data;
-        }
+        if (Array.isArray(questsRaw.quests)) questsRaw = questsRaw.quests;
+        else if (Array.isArray(questsRaw.tasks)) questsRaw = questsRaw.tasks;
     }
 
-    // Schritt C: Letzter Check
     if (!Array.isArray(questsRaw)) {
-         console.error("KI Antwort Struktur:", questsRaw);
-         throw new Error("Konnte kein Quest-Array in der Antwort finden. (Siehe Console für Details)");
+         throw new Error("Konnte kein Quest-Array in der Antwort finden.");
     }
 
-    // 3. Speichern in DB
     const newQuests: Quest[] = questsRaw.map((q: any) => ({
       id: crypto.randomUUID(),
       content: q.content,
