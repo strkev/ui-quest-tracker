@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Module } from '../db/db';
 import { GamificationService } from '../services/GamificationService';
 import { QuestGenerator } from '../services/QuestGenerator';
-import { Plus, Zap, Loader2, Book, History, Flame, ShoppingBag } from 'lucide-react';
+import { Plus, Zap, Loader2, Book, History, Flame, ShoppingBag, ChevronDown, ChevronUp } from 'lucide-react';
 
 // Components
 import { UserMenu } from './UserMenu';
@@ -23,6 +23,7 @@ export const Dashboard: React.FC = () => {
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [editingModule, setEditingModule] = useState<Module | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isQuestsOpen, setIsQuestsOpen] = useState(false); // Default eingeklappt
 
   // Data
   const modules = useLiveQuery(() => db.modules.toArray()) || [];
@@ -128,24 +129,41 @@ export const Dashboard: React.FC = () => {
       {/* WEEKLY QUESTS SECTION */}
       <section className="mb-12">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2 text-slate-200">
-                <span className="text-accent animate-pulse">●</span> Current Weekly Quests
-            </h2>
+            {/* Titel ist jetzt ein Button & zeigt die Anzahl an */}
+            <button 
+              onClick={() => setIsQuestsOpen(!isQuestsOpen)} 
+              className="flex items-center gap-3 group focus:outline-none"
+            >
+              <h2 className="text-xl font-bold flex items-center gap-2 text-slate-200">
+                  <span className="text-accent animate-pulse">●</span> 
+                  Current Weekly Quests 
+                  <span className="text-slate-400 text-lg ml-1">({quests?.length || 0})</span>
+              </h2>
+              <div className="text-slate-500 group-hover:text-white transition-colors bg-slate-800/50 rounded-full p-1">
+                 {isQuestsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+              </div>
+            </button>
+
             <button onClick={() => setIsQuestLogOpen(true)} className="text-xs font-bold text-slate-400 hover:text-white flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-800 transition-all border border-transparent hover:border-slate-700">
               <History size={14} /> Quest Log
             </button>
           </div>
 
-          {quests && quests.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {quests.map(q => (
-                  <QuestItem key={q.id} quest={q} onComplete={(xp) => completeQuest(q.id, xp)} />
-                ))}
-            </div>
-          ) : (
-            <div className="pixel-card bg-slate-800/30 p-8 border-dashed border-2 border-slate-700 text-center text-slate-500 rounded-xl">
-                <p className="font-bold mb-2">Keine aktiven Quests.</p>
-                <p className="text-xs opacity-70">Starte eine neue Weekly Quest oben rechts.</p>
+          {/* Inhalt wird nur angezeigt, wenn isQuestsOpen true ist */}
+          {isQuestsOpen && (
+            <div className="animate-in slide-in-from-top-2 duration-300">
+              {quests && quests.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {quests.map(q => (
+                      <QuestItem key={q.id} quest={q} onComplete={(xp) => completeQuest(q.id, xp)} />
+                    ))}
+                </div>
+              ) : (
+                <div className="pixel-card bg-slate-800/30 p-8 border-dashed border-2 border-slate-700 text-center text-slate-500 rounded-xl">
+                    <p className="font-bold mb-2">Keine aktiven Quests.</p>
+                    <p className="text-xs opacity-70">Starte eine neue Weekly Quest oben rechts.</p>
+                </div>
+              )}
             </div>
           )}
       </section>

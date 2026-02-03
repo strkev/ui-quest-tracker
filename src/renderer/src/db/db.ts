@@ -34,8 +34,8 @@ export interface UserProfile {
   coins: number;
   streak: number;
   lastLogin: Date;
-  // Neue Felder für den Shop
   activeTheme: string; 
+  activePersona: string;
   unlockedItems: string[]; 
 }
 
@@ -45,7 +45,7 @@ const db = new Dexie('UniQuestDB') as Dexie & {
   userProfile: EntityTable<UserProfile, 'id'>;
 };
 
-db.version(2).stores({
+db.version(3).stores({
   modules: 'id, status',
   quests: 'id, isCompleted, generatedAt',
   userProfile: 'id'
@@ -59,8 +59,8 @@ db.on('populate', () => {
     coins: 0,
     streak: 0,
     lastLogin: new Date(),
-    // Defaults setzen
     activeTheme: 'theme-default',
+    activePersona: 'persona-default',
     unlockedItems: ['theme-default']
   });
 });

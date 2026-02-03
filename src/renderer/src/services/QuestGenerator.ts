@@ -1,89 +1,75 @@
 import { db, Quest } from '../db/db';
 
-const MODEL = 'llama3'; // Dein Modell
+const MODEL = 'llama3';
+
+// Definition der Persona-Stile
+const PERSONA_STYLES: Record<string, string> = {
+  'persona-default': "Antworte als freundlicher, motivierender Tutor. Nutze 'Du' und ermutige den Studenten.",
+  'persona-french-grumpy': "Antworte mit einem sehr starken französischen Akzent (z.B. 'Sacrebleu', 'Mon Dieu'). Sei ein wenig genervt von Fehlern und wirke arrogant, aber bleibe fachlich korrekt.",
+  'persona-robot': "Antworte als kalte, logische KI. Keine Emotionen. Nutze Begriffe wie 'Analyse abgeschlossen', 'Fehlerrate berechnet'. Nur Fakten."
+};
 
 export const QuestGenerator = {
 
-async checkAnswer(questContent: string, userAnswer: string): Promise<string> {
-    // WIR FORDERN EXPLIZIT JSON - Das ist sicherer für die Verarbeitung
+  async checkAnswer(questContent: string, userAnswer: string): Promise<string> {
+    const user = await db.userProfile.get('main_user');
+    const style = PERSONA_STYLES[user?.activePersona || 'persona-default'];
+
     const prompt = `
-      Du bist ein freundlicher Tutor.
+      ${style}
       
       AUFGABE: "${questContent}"
       ANTWORT DES STUDENTEN: "${userAnswer}"
       
-      Bitte bewerte die Antwort.
-      1. Ist sie richtig?
-      2. Was fehlt oder könnte präziser sein?
-      3. Korrigiere Fehler kurz.
+      BEWERTE:
+      1. Korrektheit prüfen.
+      2. Verbesserungsvorschläge machen.
       
-      Fasse dich kurz (maximal 3-4 Sätze). Sprich den Studenten direkt an ("Du hast...").
+      REGELN: Max 3 Sätze. Bleib in deiner Rolle!
       
-      WICHTIG: Antworte NUR als JSON-Objekt in diesem Format:
-      { "feedback": "Dein Feedback Text hier..." }
+      WICHTIG: Antworte AUSSCHLIESSLICH im JSON-Format. Keine Einleitung, kein "Hier ist das JSON".
+      FORMAT: { "feedback": "DEIN_TEXT_HIER" }
     `;
 
     try {
-      const result = await window.api.generateAI('llama3', prompt); 
-      
-      if (!result.success || !result.data) {
-        return "Konnte keine Bewertung abrufen.";
-      }
+      const result = await window.api.generateAI(MODEL, prompt); 
+      if (!result.success || !result.data) return "Konnte keine Bewertung abrufen.";
 
       let output = result.data;
 
-      // 1. Falls es ein String ist: Nach JSON suchen und parsen
+      // --- FIX: Erst das response-Feld auspacken, falls es ein API-Objekt ist ---
+      if (typeof output === 'object' && output !== null && 'response' in output) {
+        output = output.response;
+      }
+      // --------------------------------------------------------------------------
+
+      // JSON-Extraktions-Logik (sucht nach dem ersten { und letzten })
       if (typeof output === 'string') {
-        try {
-          // Wir suchen gezielt nach {...} um evtl. Texte davor/danach zu ignorieren
-          const jsonMatch = output.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-             output = JSON.parse(jsonMatch[0]);
-          } else {
-             // Keine geschweiften Klammern? Dann ist es wohl reiner Text.
-             return output; 
+        const start = output.indexOf('{');
+        const end = output.lastIndexOf('}');
+        if (start !== -1 && end !== -1) {
+          try {
+            const cleaned = output.substring(start, end + 1);
+            const parsed = JSON.parse(cleaned);
+            return parsed.feedback || cleaned;
+          } catch (e) {
+            return output; // Fallback auf Rohtext, falls Parsing fehlschlägt
           }
-        } catch (e) {
-          // Parsing fehlgeschlagen? Dann nehmen wir den Roh-Text.
-          return output;
         }
+        return output; // Kein JSON gefunden, gib Text zurück
       }
 
-      // 2. Objekt analysieren (Hier holen wir das Feedback raus)
-      if (output && typeof output === 'object') {
-        // A: Unser gewünschtes Format
-        if (output.feedback) return output.feedback;
-        
-        // B: Fallback Standard-Felder (falls Llama "response" oder "text" nutzt)
-        if (output.response) return typeof output.response === 'string' ? output.response : JSON.stringify(output.response);
-        if (output.text) return output.text;
-        if (output.content) return output.content;
-
-        // C: Dein Spezialfall ("Key ist der Text")
-        // Wir suchen den längsten Key, falls das LLM das JSON verhauen hat
-        const keys = Object.keys(output);
-        if (keys.length > 0) {
-            const longestKey = keys.reduce((a, b) => a.length > b.length ? a : b);
-            // Wenn der Key wie ein Satz aussieht (> 20 Zeichen), nehmen wir ihn
-            if (longestKey.length > 20) {
-                return longestKey;
-            }
-        }
-        
-        // D: Wenn alles andere fehlschlägt, geben wir das Objekt als String zurück
-        return JSON.stringify(output);
-      }
-
-      return String(output);
+      // Falls es schon ein Objekt war (aber nicht das Ollama-Objekt)
+      return (output as any).feedback || JSON.stringify(output);
 
     } catch (e) {
-      console.error("AI Check Error:", e);
+      console.error(e);
       return "Fehler bei der KI-Analyse.";
     }
   },
 
-async generate(): Promise<Quest[]> {
-    // 1. Alle Module laden, die Text enthalten (unabhängig vom Status 'active'/'completed')
+  async generate(): Promise<Quest[]> {
+    // 1. Alle Module laden, die Text enthalten
     const allModules = await db.modules.toArray();
     const modulesWithContent = allModules.filter(m => m.extractedContent && m.extractedContent.length > 50);
 
@@ -99,7 +85,7 @@ async generate(): Promise<Quest[]> {
       context += `MODUL (Aktuell): ${m.title}\nAUSZUG: ${m.extractedContent?.substring(0, 1500).replace(/\n/g, ' ')}\n\n`;
     });
 
-    // Falls vorhanden, ein zufälliges abgeschlossenes Modul für Review hinzufügen (Spaced Repetition)
+    // Spaced Repetition (Abgeschlossenes Modul)
     const completedWithContent = modulesWithContent.filter(m => m.status === 'completed');
     if (completedWithContent.length > 0) {
       const randomMod = completedWithContent[Math.floor(Math.random() * completedWithContent.length)];
@@ -128,6 +114,7 @@ async generate(): Promise<Quest[]> {
     let questsRaw: any;
     try {
         let rawJson = result.data;
+        // Hier war der Fix für generate() schon vorhanden, den wir oben übernommen haben
         if (rawJson.response && typeof rawJson.response === 'string') {
            rawJson = JSON.parse(rawJson.response);
         } else if (result.data && !result.data.response) {
@@ -138,6 +125,7 @@ async generate(): Promise<Quest[]> {
         throw new Error("Die KI hat kein gültiges JSON geliefert.");
     }
 
+    // Fallback: Manchmal packt die KI das Array in ein Objekt { "quests": [...] }
     if (!Array.isArray(questsRaw) && typeof questsRaw === 'object' && questsRaw !== null) {
         if (Array.isArray(questsRaw.quests)) questsRaw = questsRaw.quests;
         else if (Array.isArray(questsRaw.tasks)) questsRaw = questsRaw.tasks;
