@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db, Module } from '../../db/db';
-// Icons erweitert: Upload für PDF, Eye zum Ansehen, FileText als Indikator
 import { Trash2, Save, X, Star, Pencil, Plus, Upload, Eye, FileText } from 'lucide-react';
 import { GamificationService } from '../../services/GamificationService';
 
@@ -16,66 +15,61 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
   const [grade, setGrade] = useState<string>('');
   const [status, setStatus] = useState<Module['status']>('active');
   
-  // NEU: State für den extrahierten Inhalt und das Vorschau-Modal
   const [extractedContent, setExtractedContent] = useState<string>('');
   const [showContentPreview, setShowContentPreview] = useState(false);
   const [isParsing, setIsParsing] = useState(false);
 
   const isEditMode = !!initialModule;
+  const loadedModuleIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (isOpen && initialModule) {
-      setTitle(initialModule.title);
-      setCp(initialModule.cp.toString());
-      setGrade(initialModule.grade ? initialModule.grade.toString() : '');
-      setStatus(initialModule.status);
-      // NEU: Inhalt laden, falls vorhanden
-      setExtractedContent(initialModule.extractedContent || '');
-    } else if (isOpen) {
+      if (loadedModuleIdRef.current !== initialModule.id) {
+          setTitle(initialModule.title);
+          setCp(initialModule.cp.toString());
+          setGrade(initialModule.grade ? initialModule.grade.toString() : '');
+          setStatus(initialModule.status);
+          setExtractedContent(initialModule.extractedContent || '');
+          
+          loadedModuleIdRef.current = initialModule.id;
+      }
+    } else if (isOpen && !initialModule) {
       setTitle('');
       setCp('5');
       setGrade('');
       setStatus('active');
       setExtractedContent('');
+      loadedModuleIdRef.current = null;
     }
   }, [isOpen, initialModule]);
 
-  // NEU: Simulierter PDF Parser (Hier müsstest du deine echte PDF-Logik einbinden, z.B. pdfjs-dist)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleSelectFile = async () => {
+    if (isParsing) return;
 
-    if (file.type !== 'application/pdf') {
-        alert('Bitte nur PDF Dateien hochladen.');
-        return;
-    }
-
-    setIsParsing(true);
     try {
-        // --- PLATZHALTER FÜR PDF PARSING ---
-        // Da wir im Browser/Renderer sind, nutzen wir hier eine Simulation oder 
-        // rufen window.api.parsePDF(path) auf, falls du das im Preload hast.
-        // Für dieses Beispiel simulieren wir, dass Text extrahiert wurde:
+        // 1. Öffne den nativen Datei-Dialog (ruft IPC 'dialog:openFile' auf)
+        const filePath = await window.api.selectPdf();
         
-        console.log("Starte Parsing für:", file.name);
+        if (!filePath) return; // Benutzer hat abgebrochen
+
+        setIsParsing(true);
+        console.log("Starte Parsing für:", filePath);
+
+        // 2. Sende den Pfad an den Parser (ruft IPC 'pdf:parse' auf)
+        const result = await window.api.parsePdf(filePath);
         
-        // TODO: Ersetze dies durch echte Logik, z.B.:
-        // const text = await window.api.extractTextFromPDF(file.path);
-        
-        // Simulation (Löschen, sobald echter Parser da ist):
-        await new Promise(r => setTimeout(r, 1000)); 
-        const simulatedText = `Dies ist der extrahierte Inhalt aus der Datei "${file.name}". \n\nHier würde der echte Skript-Text stehen, der für die Quest-Generierung genutzt wird.`;
-        
-        setExtractedContent(simulatedText);
-        alert('PDF erfolgreich verarbeitet und Text gespeichert!');
-        
+        if (result.success && result.text) {
+             setExtractedContent(result.text);
+             alert('PDF erfolgreich analysiert und Text extrahiert!');
+        } else {
+             throw new Error(result.error || 'Kein Text gefunden.');
+        }
+
     } catch (error) {
         console.error("Fehler beim PDF Parsen:", error);
-        alert("Fehler beim Lesen der PDF.");
+        alert("Fehler beim Lesen der PDF: " + (error instanceof Error ? error.message : String(error)));
     } finally {
         setIsParsing(false);
-        // Reset Input damit man die gleiche Datei nochmal wählen kann
-        e.target.value = '';
     }
   };
 
@@ -111,7 +105,6 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
         grade: gradeValue,
         status,
         xpAwarded: newXpAwardedState,
-        // NEU: Hier speichern wir den Text in die DB
         extractedContent: extractedContent
       };
 
@@ -142,7 +135,7 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans animate-in fade-in duration-200">
       
-      {/* --- CONTENT PREVIEW MODAL (Verschachtelt) --- */}
+      {/* --- CONTENT PREVIEW MODAL --- */}
       {showContentPreview && (
           <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 p-8">
               <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl h-3/4 rounded-xl flex flex-col shadow-2xl">
@@ -156,7 +149,7 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
                       </button>
                   </div>
                   <div className="p-6 overflow-y-auto flex-1 font-mono text-sm text-slate-300 whitespace-pre-wrap">
-                      {extractedContent}
+                      {extractedContent ? extractedContent : <span className="text-slate-500 italic">Kein Inhalt vorhanden.</span>}
                   </div>
               </div>
           </div>
@@ -208,7 +201,7 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
             />
           </div>
 
-          {/* --- NEU: PDF UPLOAD BEREICH --- */}
+          {/* --- PDF UPLOAD BEREICH --- */}
           <div className="p-4 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 hover:border-accent/50 transition-colors">
               <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider flex justify-between">
                   <span>Skript / Lernmaterial</span>
@@ -216,25 +209,23 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
               </label>
               
               <div className="flex gap-3">
-                  {/* Hidden File Input */}
+                  {/* Neuer Button (ohne das alte Div darunter) */}
                   <div className="relative flex-1">
-                      <input 
-                          type="file" 
-                          accept="application/pdf"
-                          onChange={handleFileUpload}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                          disabled={isParsing}
-                      />
-                      <div className={`w-full py-3 px-4 rounded-lg border border-slate-600 flex items-center justify-center gap-2 text-sm font-bold transition-all ${isParsing ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 hover:bg-slate-700 text-white'}`}>
-                          {isParsing ? (
-                              <span>Verarbeite PDF...</span>
-                          ) : (
-                              <>
-                                <Upload size={16} />
-                                <span>{extractedContent ? 'Neue PDF hochladen (Überschreiben)' : 'PDF hochladen'}</span>
-                              </>
-                          )}
-                      </div>
+                      <button 
+                        type="button"
+                        onClick={handleSelectFile}
+                        disabled={isParsing}
+                        className={`w-full py-3 px-4 rounded-lg border border-slate-600 flex items-center justify-center gap-2 text-sm font-bold transition-all ${isParsing ? 'bg-slate-800 text-slate-500 cursor-wait' : 'bg-slate-800 hover:bg-slate-700 text-white hover:border-accent'}`}
+                      >
+                        {isParsing ? (
+                            <span>Verarbeite PDF...</span>
+                        ) : (
+                            <>
+                              <Upload size={16} />
+                              <span>{extractedContent ? 'Andere PDF wählen' : 'PDF auswählen'}</span>
+                            </>
+                        )}
+                      </button>
                   </div>
 
                   {/* View Content Button */}
@@ -254,7 +245,7 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
           </div>
 
           <div className="grid grid-cols-2 gap-6">
-            {/* CP & Grade Input (unverändert) */}
+            {/* CP & Grade Input */}
             <div>
               <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Credit Points</label>
               <div className="relative">
@@ -285,7 +276,7 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
             </div>
           </div>
 
-          {/* --- STATUS (unverändert) --- */}
+          {/* --- STATUS --- */}
           <div>
              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Status</label>
              <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-700">
