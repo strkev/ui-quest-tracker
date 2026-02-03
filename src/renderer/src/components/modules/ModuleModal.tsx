@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, Module } from '../../db/db';
-import { Trash2, Save, X, Star, Pencil, Plus} from 'lucide-react';
+// Icons erweitert: Upload für PDF, Eye zum Ansehen, FileText als Indikator
+import { Trash2, Save, X, Star, Pencil, Plus, Upload, Eye, FileText } from 'lucide-react';
 import { GamificationService } from '../../services/GamificationService';
 
 interface ModuleModalProps {
@@ -14,6 +15,11 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
   const [cp, setCp] = useState<string>('5');
   const [grade, setGrade] = useState<string>('');
   const [status, setStatus] = useState<Module['status']>('active');
+  
+  // NEU: State für den extrahierten Inhalt und das Vorschau-Modal
+  const [extractedContent, setExtractedContent] = useState<string>('');
+  const [showContentPreview, setShowContentPreview] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
 
   const isEditMode = !!initialModule;
 
@@ -23,15 +29,55 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
       setCp(initialModule.cp.toString());
       setGrade(initialModule.grade ? initialModule.grade.toString() : '');
       setStatus(initialModule.status);
+      // NEU: Inhalt laden, falls vorhanden
+      setExtractedContent(initialModule.extractedContent || '');
     } else if (isOpen) {
       setTitle('');
       setCp('5');
       setGrade('');
       setStatus('active');
+      setExtractedContent('');
     }
   }, [isOpen, initialModule]);
 
-  if (!isOpen) return null;
+  // NEU: Simulierter PDF Parser (Hier müsstest du deine echte PDF-Logik einbinden, z.B. pdfjs-dist)
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== 'application/pdf') {
+        alert('Bitte nur PDF Dateien hochladen.');
+        return;
+    }
+
+    setIsParsing(true);
+    try {
+        // --- PLATZHALTER FÜR PDF PARSING ---
+        // Da wir im Browser/Renderer sind, nutzen wir hier eine Simulation oder 
+        // rufen window.api.parsePDF(path) auf, falls du das im Preload hast.
+        // Für dieses Beispiel simulieren wir, dass Text extrahiert wurde:
+        
+        console.log("Starte Parsing für:", file.name);
+        
+        // TODO: Ersetze dies durch echte Logik, z.B.:
+        // const text = await window.api.extractTextFromPDF(file.path);
+        
+        // Simulation (Löschen, sobald echter Parser da ist):
+        await new Promise(r => setTimeout(r, 1000)); 
+        const simulatedText = `Dies ist der extrahierte Inhalt aus der Datei "${file.name}". \n\nHier würde der echte Skript-Text stehen, der für die Quest-Generierung genutzt wird.`;
+        
+        setExtractedContent(simulatedText);
+        alert('PDF erfolgreich verarbeitet und Text gespeichert!');
+        
+    } catch (error) {
+        console.error("Fehler beim PDF Parsen:", error);
+        alert("Fehler beim Lesen der PDF.");
+    } finally {
+        setIsParsing(false);
+        // Reset Input damit man die gleiche Datei nochmal wählen kann
+        e.target.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,15 +85,12 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
       const cpValue = parseFloat(cp);
       const gradeValue = grade ? parseFloat(grade) : undefined;
       
-      // LOGIK: XP Management
-      // Bei Erstellung (initialModule ist null) ist status !== undefined immer true
       const isCompletingNow = status === 'completed' && initialModule?.status !== 'completed';
       const isUnCompleting = initialModule?.status === 'completed' && status !== 'completed';
       const alreadyAwarded = initialModule?.xpAwarded || false;
       
       let newXpAwardedState = alreadyAwarded;
 
-      // Fall 1: Modul wird abgeschlossen (oder direkt als Done erstellt) -> XP geben
       if (isCompletingNow && !alreadyAwarded && gradeValue) {
         const rewardXP = GamificationService.calculateModuleReward(cpValue, gradeValue);
         const { levelUp } = await GamificationService.addXP(rewardXP);
@@ -55,7 +98,6 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
         newXpAwardedState = true;
       }
 
-      // Fall 2: Modul wird zurückgesetzt -> XP abziehen
       if (isUnCompleting && alreadyAwarded && initialModule?.grade) {
         const xpToDeduct = GamificationService.calculateModuleReward(initialModule.cp, initialModule.grade);
         await GamificationService.removeXP(xpToDeduct);
@@ -68,7 +110,9 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
         cp: cpValue,
         grade: gradeValue,
         status,
-        xpAwarded: newXpAwardedState
+        xpAwarded: newXpAwardedState,
+        // NEU: Hier speichern wir den Text in die DB
+        extractedContent: extractedContent
       };
 
       if (isEditMode && initialModule) {
@@ -77,8 +121,6 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
         await db.modules.add({
           id: crypto.randomUUID(),
           ...moduleData,
-          // WICHTIG: Hier stand vorher status: 'active'. Das haben wir gelöscht.
-          // Jetzt wird moduleData.status genommen (was 'completed' sein kann).
         });
       }
       
@@ -95,8 +137,31 @@ export const ModuleModal: React.FC<ModuleModalProps> = ({ isOpen, onClose, initi
     }
   };
 
-return (
+  if (!isOpen) return null;
+
+  return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 font-sans animate-in fade-in duration-200">
+      
+      {/* --- CONTENT PREVIEW MODAL (Verschachtelt) --- */}
+      {showContentPreview && (
+          <div className="absolute inset-0 z-[60] flex items-center justify-center bg-black/80 p-8">
+              <div className="bg-slate-900 border border-slate-700 w-full max-w-2xl h-3/4 rounded-xl flex flex-col shadow-2xl">
+                  <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800 rounded-t-xl">
+                      <h3 className="text-white font-bold flex items-center gap-2">
+                          <FileText size={20} className="text-accent"/>
+                          Gespeicherter Skript-Inhalt
+                      </h3>
+                      <button onClick={() => setShowContentPreview(false)} className="text-slate-400 hover:text-white">
+                          <X size={24} />
+                      </button>
+                  </div>
+                  <div className="p-6 overflow-y-auto flex-1 font-mono text-sm text-slate-300 whitespace-pre-wrap">
+                      {extractedContent}
+                  </div>
+              </div>
+          </div>
+      )}
+
       {/* Container */}
       <div 
          className="pixel-card w-full max-w-lg relative p-0 overflow-hidden flex flex-col shadow-2xl transition-colors duration-500 rounded-2xl"
@@ -143,8 +208,53 @@ return (
             />
           </div>
 
+          {/* --- NEU: PDF UPLOAD BEREICH --- */}
+          <div className="p-4 rounded-xl border border-dashed border-slate-700 bg-slate-900/50 hover:border-accent/50 transition-colors">
+              <label className="block text-xs font-bold text-slate-400 mb-3 uppercase tracking-wider flex justify-between">
+                  <span>Skript / Lernmaterial</span>
+                  {extractedContent && <span className="text-emerald-500 text-[10px] flex items-center gap-1">● Daten vorhanden</span>}
+              </label>
+              
+              <div className="flex gap-3">
+                  {/* Hidden File Input */}
+                  <div className="relative flex-1">
+                      <input 
+                          type="file" 
+                          accept="application/pdf"
+                          onChange={handleFileUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          disabled={isParsing}
+                      />
+                      <div className={`w-full py-3 px-4 rounded-lg border border-slate-600 flex items-center justify-center gap-2 text-sm font-bold transition-all ${isParsing ? 'bg-slate-800 text-slate-500' : 'bg-slate-800 hover:bg-slate-700 text-white'}`}>
+                          {isParsing ? (
+                              <span>Verarbeite PDF...</span>
+                          ) : (
+                              <>
+                                <Upload size={16} />
+                                <span>{extractedContent ? 'Neue PDF hochladen (Überschreiben)' : 'PDF hochladen'}</span>
+                              </>
+                          )}
+                      </div>
+                  </div>
+
+                  {/* View Content Button */}
+                  <button 
+                      type="button"
+                      onClick={() => setShowContentPreview(true)}
+                      disabled={!extractedContent}
+                      className={`px-4 rounded-lg border border-slate-600 flex items-center justify-center gap-2 transition-all ${!extractedContent ? 'opacity-50 cursor-not-allowed bg-slate-900 text-slate-600' : 'bg-slate-800 hover:bg-slate-700 text-accent hover:text-white cursor-pointer'}`}
+                      title="Gespeicherten Text ansehen"
+                  >
+                      <Eye size={20} />
+                  </button>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2 text-center">
+                  Der Text wird lokal in der Datenbank gespeichert.
+              </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-6">
-            {/* --- CP INPUT --- */}
+            {/* CP & Grade Input (unverändert) */}
             <div>
               <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Credit Points</label>
               <div className="relative">
@@ -159,7 +269,6 @@ return (
               </div>
             </div>
             
-            {/* --- GRADE INPUT --- */}
             <div className={`transition-all duration-300 ${status === 'completed' ? 'opacity-100' : 'opacity-40 grayscale pointer-events-none'}`}>
                <label className="block text-xs font-bold text-accent mb-2 uppercase tracking-wider">Note (Grade)</label>
                <div className="relative">
@@ -176,46 +285,13 @@ return (
             </div>
           </div>
 
-          {/* --- STATUS --- */}
+          {/* --- STATUS (unverändert) --- */}
           <div>
              <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wider">Status</label>
              <div className="flex gap-2 p-1.5 bg-slate-900/80 rounded-xl border border-slate-700">
-                
-                <button
-                  type="button"
-                  onClick={() => setStatus('active')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                      status === 'active' 
-                      ? 'bg-accent text-white shadow-lg shadow-accent/25 scale-[1.02]' 
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Running
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setStatus('locked')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                      status === 'locked' 
-                      ? 'bg-slate-700 text-white scale-[1.02]' 
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Locked
-                </button>
-                
-                <button
-                  type="button"
-                  onClick={() => setStatus('completed')}
-                  className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${
-                      status === 'completed' 
-                      ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' 
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'
-                  }`}
-                >
-                  Done
-                </button>
+                <button type="button" onClick={() => setStatus('active')} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${status === 'active' ? 'bg-accent text-white shadow-lg shadow-accent/25 scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>Running</button>
+                <button type="button" onClick={() => setStatus('locked')} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${status === 'locked' ? 'bg-slate-700 text-white scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>Locked</button>
+                <button type="button" onClick={() => setStatus('completed')} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all duration-300 ${status === 'completed' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 scale-[1.02]' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800/50'}`}>Done</button>
              </div>
           </div>
 
